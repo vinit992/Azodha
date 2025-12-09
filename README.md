@@ -26,6 +26,7 @@ The goal of this project is to demonstrate DevOps proficiency including automati
 ---
 
 ## 🔧 Architecture
+```
   ┌──────────────┐
  Developer ───▶ │ GitHub Repo │
  └───────┬──────┘
@@ -50,9 +51,7 @@ The goal of this project is to demonstrate DevOps proficiency including automati
          │
       Client/User
 
-
-
-
+```
 ---
 
 ## 🟦 API Endpoints
