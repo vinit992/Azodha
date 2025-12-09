@@ -1,0 +1,42 @@
+name: CI/CD
+on: { push: { branches: [ "main" ] } }
+
+env:
+  IMAGE: predictor
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with: { python-version: 3.11 }
+    - run: pip install -r app/requirements.txt
+    - run: pytest app/
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+
+    - uses: actions/checkout@v4
+    - uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - uses: aws-actions/amazon-ecr-login@v2
+
+    - run: |
+        TAG=${GITHUB_SHA}
+        docker build -t predictor -f docker/Dockerfile .
+        docker tag predictor:latest ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/predictor:$TAG
+        docker push ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/predictor:$TAG
+
+    - name: Update EKS
+      run: |
+        aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.CLUSTER }}
+        kubectl set image deployment/predictor predictor=${{ secrets.AWS_ACCOUNT }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/predictor:$GITHUB_SHA
+        kubectl rollout status deployment/predictor
